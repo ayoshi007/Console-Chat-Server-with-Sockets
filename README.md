@@ -8,4 +8,4 @@ You will be prompted to enter the hostname and a port number of the server you a
 
 This repository can be cloned as an Maven project on the Eclipse IDE.
 
-As of now, the server can only handle localhost and clients on the same network.
+As of now, the server can only handle clients that are either on localhost or on the same network.
