@@ -1,0 +1,218 @@
+package server;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.SocketException;
+import java.util.Date;
+import java.util.HashMap;
+
+public class ChatServer {
+	private static int clientCount = 0;
+	
+	private ServerSocket server;
+	private HashMap<User, Socket> clients;
+	
+	public ChatServer() throws IOException {
+		this(8000);
+	}
+	
+	public ChatServer(int portNumber) throws IOException {
+		this.server = new ServerSocket(portNumber);
+		this.clients = new HashMap<>();
+	}
+	
+	public void start() {
+		try {
+			while (true) {
+				// Accept a client connecting to the server
+				Socket socket = server.accept();
+				
+				// Create a thread to handle client initialization
+				new Thread(new InitializeClient(socket)).start();
+			}
+		} catch (IOException e) {
+			System.out.println("Error");
+			e.printStackTrace();
+		}
+		
+	}
+	
+	private void updateChatLog(User sender, String message) {
+		DataOutputStream out;
+		// Iterates through the users connected to the server
+		for (User user: clients.keySet()) {
+			try {
+				// gets the output stream of the current user
+				out = new DataOutputStream(clients.get(user).getOutputStream());
+				// if the current sender is the sender, [YOU] is sent
+				if (user.equals(sender)) {
+					out.writeUTF("[YOU]: " + message);
+				}
+				// else, the sender's username is sent
+				else {
+					out.writeUTF("[" + sender.username + "]: " + message);
+				}
+			} catch (IOException e) {
+				System.out.println("Error when updating " + user.username + "'s chat log");
+				e.printStackTrace();
+			}
+		}
+	}
+	private void notifyUserJoin(User newUser) {
+		DataOutputStream out;
+		for (User user: clients.keySet()) {
+			try {
+				out = new DataOutputStream(clients.get(user).getOutputStream());
+				if (!user.equals(newUser)) {
+					out.writeUTF(newUser.getUsername() + " joined the chat server");
+				}
+			} catch (IOException e) {
+				System.out.println("Error when updating " + user.username + "'s chat log");
+				e.printStackTrace();
+			}
+		}
+	}
+	
+	public class User {
+		String hostname;
+		String username;
+		int id;
+		
+		public User(String hostname, String username, int id) {
+			this.hostname = hostname;
+			this.username = username;
+			this.id = id;
+		}
+		public String getHostname() {
+			return hostname;
+		}
+		public String getUsername() {
+			return username;
+		}
+		public int getId() {
+			return id;
+		}
+		@Override
+		public boolean equals(Object o) {
+			if (o instanceof User) {
+				User user = (User) o;
+				if (user.hostname.equals(this.hostname) && user.username.equals(this.username)) {
+					return true;
+				}
+			}
+			return false;
+		}
+		@Override
+		public int hashCode() {
+			return (hostname + username).hashCode();
+		}
+	}
+	// Runnable instance to initialize the client
+	public class InitializeClient implements Runnable {
+		private Socket socket;
+		
+		public InitializeClient(Socket socket) throws IOException {
+			this.socket = socket;
+		}
+		
+		@Override
+		public void run() {
+			try {
+				// Create streams to communicate with client
+				DataInputStream in = new DataInputStream(socket.getInputStream());
+				DataOutputStream out = new DataOutputStream(socket.getOutputStream());
+				User client = null;
+				
+				// Repeated ask user for a username until a unique one is given
+				boolean taken = true;
+				while (taken) {
+					// Ask the client for a username
+					String username = in.readUTF();
+					
+					// Create a User object from the socket and inputted username
+					client = new User(socket.getInetAddress().getHostName(), username, clientCount);
+					
+					if (clients.keySet().contains(client)) {
+						out.writeUTF("Username taken");
+					} else {
+						taken = false;
+					}
+				}
+				
+				// Put the user and its associated socket into the HashMap
+				clients.put(client, socket);
+				
+				// Notify the client of connection success
+				out.writeUTF("Created user " + client.getUsername());
+				// Welcome message
+				out.writeUTF("\nWelcome to the chat server\nType !quit to quit");
+				
+				// Print to console connected client's information
+				System.out.println("---Connected client---");
+				System.out.println("Hostname: " + socket.getInetAddress().getHostName());
+				System.out.println("IP Address: " + socket.getInetAddress().getHostAddress());
+				System.out.println("Username: " + client.getUsername());
+				System.out.println("ID: " + clientCount);
+				System.out.println("Connected at: " + new Date(System.currentTimeMillis()));
+				System.out.println();
+				clientCount++;
+				
+				// Notify other users a new user joined
+				notifyUserJoin(client);
+				
+				// Create and start Thread to handle the client's messaging and chat log
+				new Thread(new ClientHandler(client, in, out)).start();
+				return;
+			} catch (IOException e) {
+				System.out.println("Error at client initialization");
+				e.printStackTrace();
+			}
+			
+		} 
+	}
+	// Runnable instance to assign each client to handle their messaging and chat log
+	public class ClientHandler implements Runnable {
+		private User user;
+		private DataInputStream in;
+		private DataOutputStream out;
+		
+		public ClientHandler(User user, DataInputStream in, DataOutputStream out) throws IOException {
+			this.user = user;
+			this.in = in;
+			this.out = out;
+		}
+		@Override
+		public void run() {
+			boolean quit = false;
+			
+			try {
+				// Runs until the quit message is inputted
+				while (!quit) {
+					String message = in.readUTF();
+					if (message.equals("!quit")) {
+						// Gives the client the goodbye message
+						out.writeUTF("Thanks for using the chat server. Bye " + user.getUsername() + "!");
+						quit = true;
+						// Prints to console who left
+						System.out.println(user.getUsername() + " left the server");
+						// Tells other users who disconnected
+						updateChatLog(user, "DISCONNECTED");
+						// Removes the user from the HashMap
+						clients.remove(user);
+					} else {
+						updateChatLog(user, message);
+					}
+				}
+			} catch (SocketException e) {
+				System.out.println(user.getUsername() + " disconnected");
+				clients.remove(user);
+				updateChatLog(user, "*DISCONNECTED*");
+			} catch (IOException e) {
+				System.out.println("Error occurred");
+				e.printStackTrace();
+			}
+		}
+	}
+}

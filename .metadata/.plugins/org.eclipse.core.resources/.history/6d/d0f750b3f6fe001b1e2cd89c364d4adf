@@ -1,0 +1,12 @@
+package main;
+
+import java.util.Scanner;
+import client.ChatClient;
+
+public class Main {
+
+	public static void main(String[] args) {
+		
+	}
+
+}

@@ -1,0 +1,4 @@
+INDEX VERSION 1.131+D:\Comp Sci\Personal Projects\Console Chat Server with Sockets\Console-Chat-Server-with-Sockets\.metadata\.plugins\org.eclipse.jdt.core
+4065104504.index
+786365878.index
+1868907483.index

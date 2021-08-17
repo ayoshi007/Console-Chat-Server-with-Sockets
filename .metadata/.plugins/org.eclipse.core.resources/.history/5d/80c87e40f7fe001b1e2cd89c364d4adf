@@ -1,0 +1,16 @@
+package main;
+
+import server.ChatServer;
+
+public class StartChatServer {
+
+	public static void main(String[] args) {
+		ChatServer chatServer = null;
+		try {
+			
+		}
+		ChatServer chatServer = new ChatServer(8080);
+
+	}
+
+}

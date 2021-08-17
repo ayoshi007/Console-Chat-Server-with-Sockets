@@ -1,0 +1,19 @@
+package main;
+
+import java.io.IOException;
+
+import server.ChatServer;
+
+public class StartChatServer {
+
+	public static void main(String[] args) {
+		ChatServer chatServer = null;
+		try {
+			chatServer = new ChatServer();
+		} catch (IOException e) {
+			System.out.println("Failed to start chat server");
+		}
+		
+		chatServer.start();
+	}
+}

@@ -3,4 +3,9 @@
   <groupId>com.ayoshi007.app</groupId>
   <artifactId>chat-server</artifactId>
   <version>1</version>
+  
+  <properties>
+	<maven.compiler.source>8</maven.compiler.source>
+	<maven.compiler.target>1.6</maven.compiler.target>
+  </properties>
 </project>
